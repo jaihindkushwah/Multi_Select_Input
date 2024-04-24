@@ -1,31 +1,21 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import "./App.css";
 import Pill from "./components/Pill";
+import useFetch from "./custom hooks/useFetch";
 
 function App() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [suggestion, setSuggestion] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [selectedUsersSets, setSelectedUsersSets] = useState(new Set([]));
-  const inputRef=useRef();
+  const inputRef = useRef();
+  const listRef = useRef();
+
   // https://dummyjson.com/users/search?q=John
 
-  useEffect(() => {
-    const fetchUsers = () => {
-      if (searchTerm.trim() === "") {
-        setSuggestion([]);
-        return;
-      }
-
-      // fetch users
-      fetch(`https://dummyjson.com/users/search?q=${searchTerm}`)
-        .then((response) => response.json())
-        .then((data) => setSuggestion(data))
-        .catch((error) => console.log(error));
-    };
-    fetchUsers();
-  }, [searchTerm]);
-  // console.log(suggestion);
+  const { data: suggestion, setData: setSuggestion } = useFetch(
+    `https://dummyjson.com/users/search?q=${searchTerm}`,
+    searchTerm
+  );
 
   const handleSelectedUser = (user) => {
     if (selectedUsersSets.has(user.email)) {
@@ -36,7 +26,6 @@ function App() {
     setSuggestion([]);
     setSearchTerm("");
     inputRef.current.focus();
-    
   };
 
   const handleRemoveUser = (user) => {
@@ -45,29 +34,39 @@ function App() {
     setSelectedUsersSets(new Set(selectedUsersSets));
     inputRef.current.focus();
   };
-  
-  const handleBackspaceDelete=(e)=>{
-    if(searchTerm==="" && e.key==='Backspace' && selectedUsers.length!==0){
+
+  const handleBackspaceDelete = (e) => {
+    if (
+      searchTerm === "" &&
+      e.key === "Backspace" &&
+      selectedUsers.length !== 0
+    ) {
       // console.log("backspace");
-      const lastUser=selectedUsers[selectedUsers.length-1];
+      const lastUser = selectedUsers[selectedUsers.length - 1];
       handleRemoveUser(lastUser);
     }
-  }
+    else if(e.key === "ArrowDown" && listRef.current){
+      // console.log("ArrowDown");
+      listRef.current.scrollTop+=40;
+    }
+    else if(e.key === "ArrowUp" && listRef.current){
+      // console.log("ArrowUp");
+      listRef.current.scrollTop-=40;
+    }
+  };
 
   return (
     <div className="user-search-container">
       <div className="user-search-input">
         {/* pills */}
-        {
-          selectedUsers?.map((user) => (
-            <Pill
-              key={user.email}
-              image={user.image}
-              text={`${user.firstName} ${user.lastName}`}
-              onClick={() => handleRemoveUser(user)}
-            />
-          ))
-        }
+        {selectedUsers?.map((user) => (
+          <Pill
+            key={user.email}
+            image={user.image}
+            text={`${user.firstName} ${user.lastName}`}
+            onClick={() => handleRemoveUser(user)}
+          />
+        ))}
         {/* input field with search suggestion */}
         <div>
           <input
@@ -80,10 +79,10 @@ function App() {
           />
           {/* Search Suggestion */}
           {suggestion.users ? (
-            <ul className="suggestions-list">
+            <ul className="suggestions-list" ref={listRef}>
               {suggestion.users?.map((user) =>
                 selectedUsersSets.has(user.email) ? null : (
-                  <li key={user.email} onClick={() => handleSelectedUser(user)}>
+                  <li  key={user.email} onClick={() => handleSelectedUser(user)}>
                     <img
                       src={user.image}
                       width={25}
